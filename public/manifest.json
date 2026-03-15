@@ -1,0 +1,13 @@
+{
+  "name": "TalentHub Rwanda",
+  "short_name": "TalentHub",
+  "description": "Rwanda's #1 Job Platform",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#2563eb",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}
