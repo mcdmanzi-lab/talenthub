@@ -100,6 +100,7 @@ import { ref, onMounted, computed } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import Navbar from '@/components/Navbar.vue'
 import { supabase } from '@/supabase'
+import { auth } from '@/stores/auth'
 
 const route       = useRoute()
 const loading     = ref(true)
@@ -142,11 +143,10 @@ function formatWA(phone) {
 }
 
 onMounted(async () => {
-  const { data } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('role', 'worker')
-    .order('created_at', { ascending: false })
+  const country = auth.profile?.country
+  const q = supabase.from('profiles').select('*').eq('role', 'worker').order('created_at', { ascending: false })
+  if (country) q.eq('country', country)
+  const { data } = await q
   allWorkers.value = data || []
   applyFilter()
   loading.value = false

@@ -2,7 +2,7 @@
   <div class="auth-page">
     <div class="auth-box">
       <div class="auth-logo">
-        <RouterLink to="/"><img src="/logo.svg" alt="TalentHub" /></RouterLink>
+        <RouterLink to="/"><img src="/logo.png" alt="TalentHub" /></RouterLink>
       </div>
       <div class="auth-card">
         <h1>Welcome back</h1>
@@ -24,6 +24,12 @@
           <RouterLink to="/forgot">Forgot password?</RouterLink>
         </div>
 
+        <!-- Simple captcha -->
+        <div class="form-group">
+          <label class="label">{{ captchaQ }} = ?</label>
+          <input class="input" type="number" v-model="captchaAnswer" placeholder="Your answer" />
+        </div>
+
         <button class="btn btn-primary btn-full" @click="submit" :disabled="loading">
           <span v-if="loading" class="spinner"></span>
           <span>{{ loading ? 'Signing in…' : 'Sign In' }}</span>
@@ -38,7 +44,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { RouterLink, useRouter, useRoute } from 'vue-router'
 import { supabase } from '@/supabase'
 import { auth } from '@/stores/auth'
@@ -50,9 +56,18 @@ const error     = ref('')
 const confirmed = ref(false)
 const form      = reactive({ email: '', password: '' })
 
+// Simple math captcha — no external service needed
+const captchaA      = ref(Math.floor(Math.random() * 10) + 1)
+const captchaB      = ref(Math.floor(Math.random() * 10) + 1)
+const captchaAnswer = ref('')
+const captchaQ      = computed(() => `${captchaA.value} + ${captchaB.value}`)
+
 onMounted(() => { if (route.query.confirmed) confirmed.value = true })
 
 async function submit() {
+  if (parseInt(captchaAnswer.value) !== captchaA.value + captchaB.value) {
+    error.value = 'Captcha incorrect. Please solve the math question.'; return
+  }
   error.value = ''; loading.value = true
   const { error: err } = await supabase.auth.signInWithPassword({ email: form.email, password: form.password })
   loading.value = false

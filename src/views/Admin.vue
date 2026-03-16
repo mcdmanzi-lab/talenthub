@@ -2,7 +2,7 @@
   <div class="admin-layout">
     <aside class="admin-sidebar">
       <div class="admin-brand">
-        <img src="/logo.svg" alt="TalentHub" style="height:26px" />
+        <img src="/logo.png" alt="TalentHub" style="height:26px" />
         <div style="font-size:10px;color:var(--red);font-weight:700;letter-spacing:0.08em;margin-top:2px">ADMIN PANEL</div>
       </div>
       <nav class="admin-nav">

@@ -2,7 +2,7 @@
   <div class="callback-page">
     <div class="callback-card">
       <RouterLink to="/" style="display:flex;justify-content:center;margin-bottom:24px">
-        <img src="/logo.svg" style="height:32px" />
+        <img src="/logo.png" style="height:32px" />
       </RouterLink>
       <div v-if="status==='loading'">
         <div class="spinner" style="width:32px;height:32px;border-width:3px;margin:0 auto 16px"></div>

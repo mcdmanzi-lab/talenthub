@@ -3,7 +3,7 @@
     <!-- Sidebar -->
     <aside class="dash-sidebar">
       <div class="dash-brand">
-        <img src="/logo.svg" alt="TalentHub" style="height:28px;width:auto" />
+        <img src="/logo.png" alt="TalentHub" style="height:28px;width:auto" />
       </div>
 
       <div class="dash-user">

@@ -7,13 +7,13 @@
       <div v-if="step==='payment'" class="post-card">
         <div class="post-header">
           <h1 class="post-title">Post a Job</h1>
-          <p class="post-sub">Reach thousands of qualified candidates in Rwanda.</p>
+          <p class="post-sub">Reach thousands of qualified candidates in your country.</p>
         </div>
 
         <div class="pricing-banner">
           <div class="pb-left">
-            <div class="pb-price">20,000 RWF</div>
-            <div class="pb-desc">One-time posting fee · 30 days visibility · Admin reviewed</div>
+            <div class="pb-price">30,000 RWF</div>
+            <div class="pb-desc">Monthly subscription fee · 30 days visibility · Admin reviewed</div>
           </div>
           <div class="pb-features">
             <span>✓ Listed for 30 days</span>
@@ -48,7 +48,7 @@
           <RouterLink to="/dashboard" class="btn btn-ghost">Cancel</RouterLink>
           <button class="btn btn-primary" @click="payAndContinue" :disabled="paying">
             <span v-if="paying" class="spinner"></span>
-            <span>{{ paying ? 'Processing…' : 'Pay 20,000 RWF & Continue →' }}</span>
+            <span>{{ paying ? 'Processing…' : 'Pay 30,000 RWF & Continue →' }}</span>
           </button>
         </div>
       </div>
@@ -160,6 +160,7 @@ import { sanitizeJobForm } from '@/utils/validate'
 import { auth } from '@/stores/auth'
 import { toast } from '@/stores/toast'
 import { initiatePesapalPayment } from '@/utils/pesapal'
+import { getCountry, formatAmount } from '@/utils/countries'
 import { sendEmail } from '@/utils/email'
 
 const router  = useRouter()
@@ -211,7 +212,7 @@ async function payAndContinue() {
   await supabase.from('job_payments').insert({
     employer_id:   auth.user.id,
     employer_email: auth.user.email,
-    amount:        20000,
+    amount:        30000,
     type:          'post_job',
     pay_method:    payMethod.value,
     pay_ref:       orderId,
@@ -227,7 +228,7 @@ async function payAndContinue() {
 
   const nameParts = (auth.profile?.full_name || 'User').split(' ')
   const result = await initiatePesapalPayment({
-    amount:      20000,
+    amount:      30000,
     description: 'TalentHub — Post a Job (30 days)',
     email:       auth.user.email,
     phone:       payPhone.value || auth.profile?.phone || '',

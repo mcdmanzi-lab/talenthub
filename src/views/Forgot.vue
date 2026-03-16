@@ -2,7 +2,7 @@
   <div class="auth-page">
     <div class="auth-box">
       <div class="auth-logo">
-        <RouterLink to="/"><img src="/logo.svg" /></RouterLink>
+        <RouterLink to="/"><img src="/logo.png" /></RouterLink>
       </div>
       <div class="auth-card">
         <h1>Reset password</h1>

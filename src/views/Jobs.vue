@@ -84,6 +84,7 @@ import Navbar from '@/components/Navbar.vue'
 import JobCard from '@/components/JobCard.vue'
 import ApplyModal from '@/components/ApplyModal.vue'
 import { supabase } from '@/supabase'
+import { auth } from '@/stores/auth'
 
 const loading       = ref(true)
 const search        = ref('')
@@ -117,7 +118,10 @@ const workerCats = [
 ]
 
 onMounted(async () => {
-  const { data } = await supabase.from('jobs').select('*').eq('status','approved').order('created_at',{ascending:false})
+  const country = auth.profile?.country
+  const query = supabase.from('jobs').select('*').eq('status','approved').order('created_at',{ascending:false})
+  if (country) query.eq('country', country)
+  const { data } = await query
   allJobs.value = data || []
   filter()
   loading.value = false
