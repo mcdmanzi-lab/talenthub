@@ -4,57 +4,81 @@
     <div class="messages-page">
       <div class="messages-layout">
 
-        <!-- Thread list -->
+        <!-- LEFT: Conversation list -->
         <aside class="threads-panel">
           <div class="threads-header">
             <h2 class="threads-title">Messages</h2>
-            <span class="badge badge-blue" v-if="unread > 0">{{ unread }} new</span>
+            <span v-if="unread > 0" class="badge badge-blue">{{ unread }} new</span>
           </div>
           <div v-if="loading" class="page-loader"><div class="spinner"></div></div>
-          <div v-else-if="!threads.length" class="empty" style="padding:32px 16px">
+          <div v-else-if="!conversations.length" class="empty" style="padding:32px 16px">
             <div class="empty-icon">✉️</div>
             <p>No messages yet.</p>
           </div>
           <div v-else>
-            <div v-for="t in threads" :key="t.id"
-              class="thread-item" :class="{active: activeThread?.id===t.id, unread: !t.read_by_receiver && t.receiver_id===auth.user?.id}"
-              @click="openThread(t)">
-              <div class="thread-avatar">{{ getInitials(t.sender_id === auth.user?.id ? t.receiver_name : t.sender_name) }}</div>
+            <div v-for="conv in conversations" :key="conv.other_id"
+              class="thread-item"
+              :class="{ active: activeConv?.other_id === conv.other_id, unread: conv.unread_count > 0 }"
+              @click="openConversation(conv)">
+              <div class="thread-avatar">{{ getInitials(conv.other_name) }}</div>
               <div class="thread-info">
-                <div class="thread-name">{{ t.sender_id === auth.user?.id ? t.receiver_name : t.sender_name }}</div>
-                <div class="thread-subject">{{ t.subject }}</div>
-                <div class="thread-preview">{{ t.content?.slice(0,60) }}…</div>
+                <div class="thread-name">{{ conv.other_name }}</div>
+                <div class="thread-preview">{{ conv.last_message?.slice(0, 55) }}…</div>
               </div>
-              <div class="thread-time">{{ timeAgo(t.created_at) }}</div>
+              <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+                <div class="thread-time">{{ timeAgo(conv.last_at) }}</div>
+                <span v-if="conv.unread_count > 0" class="badge badge-blue" style="font-size:10px">{{ conv.unread_count }}</span>
+              </div>
             </div>
           </div>
         </aside>
 
-        <!-- Message view -->
+        <!-- RIGHT: Conversation messages -->
         <main class="message-view">
-          <div v-if="!activeThread" class="empty" style="height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px">
+          <!-- Empty state -->
+          <div v-if="!activeConv" class="msg-empty">
             <div style="font-size:3rem;opacity:.3">✉️</div>
-            <p style="color:var(--text-ghost)">Select a conversation</p>
+            <p>Select a conversation</p>
           </div>
+
+          <!-- Active conversation -->
           <template v-else>
+            <!-- Header -->
             <div class="mv-header">
+              <div class="conv-avatar">{{ getInitials(activeConv.other_name) }}</div>
               <div>
-                <div class="mv-subject">{{ activeThread.subject }}</div>
-                <div class="mv-meta">
-                  From <strong>{{ activeThread.sender_name }}</strong> to <strong>{{ activeThread.receiver_name }}</strong>
-                  · {{ timeAgo(activeThread.created_at) }}
+                <div class="mv-subject">{{ activeConv.other_name }}</div>
+                <div class="mv-meta">{{ activeMessages.length }} messages</div>
+              </div>
+            </div>
+
+            <!-- Messages -->
+            <div class="msg-bubble-list" ref="bubbleList">
+              <div v-if="loadingMessages" class="page-loader"><div class="spinner"></div></div>
+              <div v-else v-for="msg in activeMessages" :key="msg.id"
+                class="msg-bubble-wrap"
+                :class="{ mine: msg.sender_id === auth.user.id }">
+                <div class="msg-bubble" :class="{ 'bubble-mine': msg.sender_id === auth.user.id, 'bubble-theirs': msg.sender_id !== auth.user.id }">
+                  <div v-if="msg.subject && !msg.subject.startsWith('Re:')" class="bubble-subject">{{ msg.subject }}</div>
+                  <div class="bubble-content">{{ msg.content }}</div>
+                  <div class="bubble-time">{{ timeAgo(msg.created_at) }}</div>
                 </div>
               </div>
             </div>
-            <div class="mv-body">
-              <p>{{ activeThread.content }}</p>
-            </div>
+
+            <!-- Reply box -->
             <div class="mv-reply">
-              <textarea class="input" v-model="reply" rows="4" placeholder="Write a reply…" />
-              <button class="btn btn-primary" style="margin-top:10px" @click="sendReply" :disabled="sending">
-                <span v-if="sending" class="spinner"></span>
-                <span>{{ sending ? 'Sending…' : 'Send Reply' }}</span>
-              </button>
+              <div style="display:flex;gap:10px;align-items:flex-end">
+                <textarea class="input reply-input" v-model="reply" rows="3"
+                  placeholder="Write a message…"
+                  @keydown.enter.ctrl.prevent="sendReply"
+                  @keydown.enter.meta.prevent="sendReply" />
+                <button class="btn btn-primary" style="flex-shrink:0;height:42px" @click="sendReply" :disabled="sending">
+                  <span v-if="sending" class="spinner"></span>
+                  <span v-else>Send ↑</span>
+                </button>
+              </div>
+              <div style="font-size:11px;color:var(--text-ghost);margin-top:6px">Ctrl+Enter to send</div>
             </div>
           </template>
         </main>
@@ -64,7 +88,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import Navbar from '@/components/Navbar.vue'
 import { supabase } from '@/supabase'
 import { auth } from '@/stores/auth'
@@ -72,74 +96,187 @@ import { toast } from '@/stores/toast'
 import { sendEmail } from '@/utils/email'
 import { sanitizeReply } from '@/utils/validate'
 
-const loading      = ref(true)
-const threads      = ref([])
-const activeThread = ref(null)
-const reply        = ref('')
-const sending      = ref(false)
+const loading        = ref(true)
+const loadingMessages = ref(false)
+const allMessages    = ref([])
+const activeConv     = ref(null)
+const activeMessages = ref([])
+const reply          = ref('')
+const sending        = ref(false)
+const bubbleList     = ref(null)
 
-const unread = computed(() => threads.value.filter(t => !t.read_by_receiver && t.receiver_id === auth.user?.id).length)
+// Group messages into conversations by the other person
+const conversations = computed(() => {
+  const map = {}
+  for (const msg of allMessages.value) {
+    const otherId   = msg.sender_id === auth.user.id ? msg.receiver_id : msg.sender_id
+    const otherName = msg.sender_id === auth.user.id ? msg.receiver_name : msg.sender_name
+    if (!map[otherId]) {
+      map[otherId] = { other_id: otherId, other_name: otherName, last_message: '', last_at: msg.created_at, unread_count: 0 }
+    }
+    map[otherId].last_message = msg.content
+    if (new Date(msg.created_at) > new Date(map[otherId].last_at)) map[otherId].last_at = msg.created_at
+    if (!msg.read_by_receiver && msg.receiver_id === auth.user.id) map[otherId].unread_count++
+  }
+  return Object.values(map).sort((a,b) => new Date(b.last_at) - new Date(a.last_at))
+})
 
-onMounted(load)
+const unread = computed(() => conversations.value.reduce((sum, c) => sum + c.unread_count, 0))
 
-async function load() {
+onMounted(loadAll)
+
+async function loadAll() {
   loading.value = true
   const { data } = await supabase
     .from('messages')
     .select('*')
     .or(`sender_id.eq.${auth.user.id},receiver_id.eq.${auth.user.id}`)
-    .order('created_at', { ascending: false })
-  threads.value = data || []
+    .order('created_at', { ascending: true })
+  allMessages.value = data || []
   loading.value = false
 }
 
-async function openThread(t) {
-  activeThread.value = t
-  // Mark as read
-  if (!t.read_by_receiver && t.receiver_id === auth.user?.id) {
-    await supabase.from('messages').update({ read_by_receiver: true }).eq('id', t.id)
-    t.read_by_receiver = true
+async function openConversation(conv) {
+  activeConv.value = conv
+  loadingMessages.value = true
+
+  // Get all messages between the two users
+  activeMessages.value = allMessages.value.filter(msg =>
+    (msg.sender_id === auth.user.id && msg.receiver_id === conv.other_id) ||
+    (msg.sender_id === conv.other_id && msg.receiver_id === auth.user.id)
+  )
+
+  // Mark unread messages as read
+  const unreadIds = activeMessages.value
+    .filter(m => !m.read_by_receiver && m.receiver_id === auth.user.id)
+    .map(m => m.id)
+  if (unreadIds.length) {
+    await supabase.from('messages').update({ read_by_receiver: true }).in('id', unreadIds)
+    unreadIds.forEach(id => {
+      const msg = allMessages.value.find(m => m.id === id)
+      if (msg) msg.read_by_receiver = true
+    })
   }
+
+  loadingMessages.value = false
+  await nextTick()
+  scrollToBottom()
 }
 
 async function sendReply() {
+  if (!reply.value.trim()) return
   const { cleaned, error: valErr } = sanitizeReply(reply.value)
   if (valErr) { toast.error(valErr); return }
-  reply.value = cleaned
-  sending.value = true
-  const receiverId   = activeThread.value.sender_id === auth.user.id ? activeThread.value.receiver_id : activeThread.value.sender_id
-  const receiverName = activeThread.value.sender_id === auth.user.id ? activeThread.value.receiver_name : activeThread.value.sender_name
 
-  await supabase.from('messages').insert({
+  sending.value = true
+  const newMsg = {
     sender_id:        auth.user.id,
     sender_name:      auth.profile?.full_name,
-    receiver_id:      receiverId,
-    receiver_name:    receiverName,
-    subject:          'Re: ' + activeThread.value.subject,
-    content:          reply.value,
-    read_by_receiver: false
-  })
+    receiver_id:      activeConv.value.other_id,
+    receiver_name:    activeConv.value.other_name,
+    subject:          'Re: conversation',
+    content:          cleaned,
+    read_by_receiver: false,
+  }
+
+  const { data } = await supabase.from('messages').insert(newMsg).select().single()
+  if (data) {
+    allMessages.value.push(data)
+    activeMessages.value.push(data)
+  }
 
   await sendEmail({
-    to:      activeThread.value.sender_id === auth.user.id ? activeThread.value.receiver_name : activeThread.value.sender_name,
-    subject: 'Re: ' + activeThread.value.subject,
-    html:    `<p>You have a new reply from <strong>${auth.profile?.full_name}</strong> on TalentHub:</p><p>${reply.value.replace(/\n/g,'<br>')}</p>`
+    to:      activeConv.value.other_name,
+    subject: `New message from ${auth.profile?.full_name} on TalentHub`,
+    html:    `<p><strong>${auth.profile?.full_name}</strong> sent you a message on TalentHub:</p><p style="background:#f3f4f6;padding:12px;border-radius:8px">${cleaned.replace(/\n/g,'<br>')}</p><a href="${import.meta.env.VITE_APP_URL}/messages" style="background:#2563eb;color:white;padding:10px 20px;border-radius:6px;text-decoration:none;display:inline-block;margin-top:12px">Reply on TalentHub →</a>`
   })
 
   reply.value = ''
   sending.value = false
-  toast.success('Reply sent!')
-  await load()
+  await nextTick()
+  scrollToBottom()
+}
+
+function scrollToBottom() {
+  if (bubbleList.value) bubbleList.value.scrollTop = bubbleList.value.scrollHeight
 }
 
 function getInitials(name) {
   return (name||'?').split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2)
 }
 function timeAgo(d) {
-  const diff = Date.now() - new Date(d), day = Math.floor(diff/86400000)
-  if (day < 1) return 'Today'; if (day < 30) return `${day}d ago`
+  if (!d) return ''
+  const diff = Date.now() - new Date(d), m = Math.floor(diff/60000), h = Math.floor(diff/3600000), day = Math.floor(diff/86400000)
+  if (m < 1) return 'Just now'
+  if (m < 60) return `${m}m ago`
+  if (h < 24) return `${h}h ago`
+  if (day < 7) return `${day}d ago`
   return new Date(d).toLocaleDateString()
 }
 </script>
 
-
+<style scoped>
+.msg-empty {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 12px;
+  color: var(--text-ghost);
+  font-size: 14px;
+}
+.conv-avatar {
+  width: 40px; height: 40px; border-radius: 50%;
+  background: var(--accent-bg); color: #93c5fd;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 700; border: 1px solid var(--accent-border);
+  flex-shrink: 0;
+}
+.mv-header {
+  display: flex; align-items: center; gap: 12px;
+  padding: 16px 20px; border-bottom: 1px solid var(--border);
+}
+.msg-bubble-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.msg-bubble-wrap { display: flex; }
+.msg-bubble-wrap.mine { justify-content: flex-end; }
+.msg-bubble {
+  max-width: 70%;
+  padding: 10px 14px;
+  border-radius: 16px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.bubble-mine {
+  background: var(--accent);
+  color: white;
+  border-bottom-right-radius: 4px;
+}
+.bubble-theirs {
+  background: var(--surface2);
+  color: var(--text);
+  border-bottom-left-radius: 4px;
+}
+.bubble-subject {
+  font-size: 11px;
+  font-weight: 600;
+  opacity: 0.7;
+  margin-bottom: 4px;
+}
+.bubble-content { word-break: break-word; }
+.bubble-time {
+  font-size: 10px;
+  opacity: 0.6;
+  margin-top: 4px;
+  text-align: right;
+}
+.reply-input { resize: none; }
+.mv-reply { padding: 16px 20px; border-top: 1px solid var(--border); }
+</style>

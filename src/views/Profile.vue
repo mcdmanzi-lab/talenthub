@@ -6,7 +6,17 @@
       <!-- LEFT: Profile Card -->
       <aside class="profile-sidebar">
         <div class="profile-card">
-          <div class="profile-avatar">{{ initials }}</div>
+          <!-- Profile Photo -->
+          <div class="profile-photo-wrap">
+            <div class="profile-avatar-img" v-if="profile.avatar_url">
+              <img :src="profile.avatar_url" alt="Profile photo" />
+            </div>
+            <div class="profile-avatar" v-else>{{ initials }}</div>
+            <label v-if="isOwn" class="photo-upload-btn" title="Change photo">
+              📷
+              <input type="file" accept="image/*" style="display:none" @change="uploadPhoto" />
+            </label>
+          </div>
           <div class="profile-name">{{ profile.full_name || '—' }}</div>
           <div class="profile-title">{{ profile.title || 'Add your job title' }}</div>
           <div v-if="profile.worker_category" class="worker-category-badge">
@@ -309,6 +319,20 @@ async function loadPortfolio() {
 async function loadExperience() {
   const { data } = await supabase.from('experience').select('*').eq('user_id', profileId.value).order('start_year', { ascending: false })
   experience.value = data || []
+}
+
+async function uploadPhoto(e) {
+  const file = e.target.files[0]
+  if (!file) return
+  if (file.size > 3 * 1024 * 1024) { toast.error('Photo must be under 3MB'); return }
+  const ext  = file.name.split('.').pop()
+  const path = `avatars/${auth.user.id}.${ext}`
+  const { error } = await supabase.storage.from('avatars').upload(path, file, { upsert: true })
+  if (error) { toast.error('Upload failed'); return }
+  const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path)
+  await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', auth.user.id)
+  profile.avatar_url = publicUrl
+  toast.success('Photo updated!')
 }
 
 async function saveProfile() {
