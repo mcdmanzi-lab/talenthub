@@ -1,8 +1,9 @@
 <template>
   <div class="auth-page">
     <div class="auth-box">
-      <div class="auth-logo">
+      <div class="auth-logo" style="position:relative">
         <RouterLink to="/"><img src="/logo.png" alt="TalentHub" /></RouterLink>
+        <RouterLink to="/" style="position:absolute;right:0;top:0;width:32px;height:32px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:var(--text-dim);font-size:16px;text-decoration:none;transition:all 0.15s" title="Go back">✕</RouterLink>
       </div>
       <div class="auth-card">
         <h1>Welcome back</h1>
