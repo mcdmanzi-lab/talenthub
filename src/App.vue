@@ -1,5 +1,9 @@
 <template>
-  <RouterView />
+  <RouterView v-slot="{ Component }">
+    <KeepAlive :include="['Dashboard', 'Messages']">
+      <component :is="Component" />
+    </KeepAlive>
+  </RouterView>
   <ToastNotification />
 </template>
 

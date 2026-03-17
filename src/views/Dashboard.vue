@@ -240,7 +240,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onActivated, watch } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { supabase } from '@/supabase'
 import { auth } from '@/stores/auth'
@@ -291,11 +291,18 @@ const stats = computed(() => auth.isEmployer
     ]
 )
 
-onMounted(async () => {
+async function init() {
   if (!auth.user) { router.push('/login'); return }
+  loading.value = true
   await load()
   loading.value = false
-})
+}
+
+onMounted(init)
+onActivated(init)
+
+// Also reload if auth becomes available after mount
+watch(() => auth.user, (user) => { if (user) init() })
 
 async function load() {
   const jobIds = []

@@ -74,6 +74,11 @@ async function submit() {
   loading.value = false
   if (err) { error.value = err.message; return }
   await auth.init()
-  router.push('/dashboard')
+  // Check subscription status
+  if (!auth.profile?.subscription_active) {
+    router.push('/subscribe')
+  } else {
+    router.push('/dashboard')
+  }
 }
 </script>

@@ -9,8 +9,8 @@
         <div class="check-row">✅ Job alerts activated</div>
         <div class="check-row">✉️ Confirmation email sent</div>
       </div>
-      <RouterLink to="/dashboard" class="btn btn-primary btn-full btn-lg" style="margin-top:24px">
-        Continue to Dashboard →
+      <RouterLink to="/subscribe" class="btn btn-primary btn-full btn-lg" style="margin-top:24px">
+        Activate Account →
       </RouterLink>
     </div>
   </div>

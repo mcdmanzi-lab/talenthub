@@ -88,7 +88,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, onActivated, watch, nextTick } from 'vue'
 import Navbar from '@/components/Navbar.vue'
 import { supabase } from '@/supabase'
 import { auth } from '@/stores/auth'
@@ -123,7 +123,17 @@ const conversations = computed(() => {
 
 const unread = computed(() => conversations.value.reduce((sum, c) => sum + c.unread_count, 0))
 
-onMounted(loadAll)
+onMounted(async () => {
+  if (auth.user) await loadAll()
+})
+
+onActivated(async () => {
+  if (auth.user) await loadAll()
+})
+
+watch(() => auth.user, async (user) => {
+  if (user) await loadAll()
+})
 
 async function loadAll() {
   loading.value = true

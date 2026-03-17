@@ -16,13 +16,15 @@ import Company        from '@/views/Company.vue'
 import Messages       from '@/views/Messages.vue'
 import PaymentCallback from '@/views/PaymentCallback.vue'
 import Workers        from '@/views/Workers.vue'
+import Subscribe      from '@/views/Subscribe.vue'
 
 const routes = [
   { path: '/',                 component: Landing },
-  { path: '/jobs',             component: Jobs },
+  { path: '/jobs',             component: Jobs,    meta: { requiresAuth: true } },
   { path: '/login',            component: Login },
   { path: '/register',         component: Register },
   { path: '/welcome',          component: Welcome },
+  { path: '/subscribe',        component: Subscribe, meta: { requiresAuth: true } },
   { path: '/forgot',           component: Forgot },
   { path: '/reset',            component: Reset },
   { path: '/profile/:id',      component: Profile },
@@ -30,7 +32,7 @@ const routes = [
   { path: '/company/:id',      component: Company },
   { path: '/messages',         component: Messages,        meta: { requiresAuth: true } },
   { path: '/payment-callback', component: PaymentCallback },
-  { path: '/workers',          component: Workers },
+  { path: '/workers',          component: Workers, meta: { requiresAuth: true } },
   { path: '/post',             component: PostJob,   meta: { requiresAuth: true } },
   { path: '/dashboard',        component: Dashboard, meta: { requiresAuth: true } },
   { path: '/admin',            component: Admin,     meta: { requiresAuth: true, requiresAdmin: true } },
@@ -43,8 +45,14 @@ const router = createRouter({
 })
 
 router.beforeEach((to) => {
-  if (to.meta.requiresAuth && !auth.user) return '/login'
+  if (to.meta.requiresAuth && !auth.user) return '/register'
   if (to.meta.requiresAdmin && !auth.isAdmin) return '/'
+
+  // If logged in but not subscribed, block protected pages except subscribe/welcome
+  const freeRoutes = ['/subscribe', '/welcome', '/login', '/register', '/forgot', '/reset', '/']
+  if (auth.user && !auth.profile?.subscription_active && !freeRoutes.includes(to.path)) {
+    return '/subscribe'
+  }
 })
 
 export default router

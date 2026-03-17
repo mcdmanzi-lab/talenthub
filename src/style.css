@@ -805,3 +805,73 @@ img { display: block; max-width: 100%; }
 
 /* ─── Message bubbles layout fix ─────────────────────────── */
 .message-view { display: flex; flex-direction: column; height: 100%; min-height: 500px; }
+
+/* ─── Dashboard Layout ────────────────────────────────────── */
+.dash-layout  { display:flex;min-height:100vh; }
+.dash-sidebar {
+  width:240px;flex-shrink:0;background:var(--surface);
+  border-right:1px solid var(--border);padding:20px 12px;
+  display:flex;flex-direction:column;
+  position:sticky;top:0;height:100vh;overflow-y:auto;
+}
+.dash-brand   { padding:0 8px;margin-bottom:20px; }
+.dash-user    { display:flex;align-items:center;gap:10px;padding:10px;background:var(--surface2);border-radius:var(--radius);margin-bottom:20px; }
+.dash-avatar  { width:36px;height:36px;border-radius:50%;background:var(--accent-bg);color:#93c5fd;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;border:1px solid var(--accent-border);flex-shrink:0; }
+.dash-uname   { font-size:13px;font-weight:600; }
+.dash-urole   { font-size:11px;color:var(--text-dim);text-transform:capitalize; }
+.dash-nav     { display:flex;flex-direction:column;gap:2px;flex:1; }
+.dash-nav-item {
+  display:flex;align-items:center;gap:10px;padding:9px 10px;
+  border-radius:var(--radius);font-size:13px;color:var(--text-dim);
+  background:none;border:none;cursor:pointer;text-align:left;
+  transition:all 0.15s;width:100%;text-decoration:none;
+}
+.dash-nav-item:hover  { background:rgba(255,255,255,0.05);color:var(--text); }
+.dash-nav-item.active { background:var(--accent-bg);color:#60a5fa; }
+.dash-nav-item.danger:hover { background:rgba(239,68,68,0.1);color:var(--red); }
+.dash-main    { flex:1;padding:28px;overflow-y:auto;min-width:0; }
+.dash-header  { margin-bottom:24px; }
+.dash-title   { font-size:22px;font-weight:700;margin-bottom:4px; }
+.dash-sub     { font-size:14px;color:var(--text-dim); }
+.dash-section { margin-bottom:28px; }
+.section-hd   { display:flex;align-items:center;justify-content:space-between;margin-bottom:14px; }
+.section-hd h2{ font-size:15px;font-weight:600; }
+
+/* Stats grid */
+.stats-grid {
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:12px;
+  margin-bottom:28px;
+}
+@media(min-width:640px) { .stats-grid { grid-template-columns:repeat(4,1fr); } }
+.stat-card  { background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px; }
+.stat-val   { font-size:26px;font-weight:700;margin-bottom:4px; }
+.stat-label { font-size:12px;color:var(--text-ghost); }
+
+/* App rows */
+.app-list { display:flex;flex-direction:column;gap:8px; }
+.app-row  { background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap; }
+.app-info .app-name { font-size:14px;font-weight:600;margin-bottom:2px; }
+.app-info .app-meta { font-size:12px;color:var(--text-dim); }
+
+/* Job rows */
+.job-list { display:flex;flex-direction:column;gap:8px; }
+.job-row  { background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap; }
+.job-row .job-info h4 { font-size:14px;font-weight:600;margin-bottom:2px; }
+.job-row .job-info p  { font-size:12px;color:var(--text-dim); }
+.job-row .job-actions { display:flex;gap:6px;flex-wrap:wrap; }
+
+/* Alert card */
+.alert-card     { background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap; }
+.alert-card-on  { border-color:var(--green-border);background:var(--green-dim); }
+.alert-card p   { font-size:13px;font-weight:600;margin-bottom:2px; }
+.alert-card small{ font-size:12px;color:var(--text-dim); }
+
+/* Mobile responsive */
+@media(max-width:768px) {
+  .dash-layout { flex-direction:column; }
+  .dash-sidebar { width:100%;height:auto;position:relative;flex-direction:row;flex-wrap:wrap;padding:12px; }
+  .dash-nav { flex-direction:row;flex-wrap:wrap; }
+  .dash-main { padding:16px; }
+}
