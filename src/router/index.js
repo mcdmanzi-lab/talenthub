@@ -48,10 +48,20 @@ router.beforeEach((to) => {
   if (to.meta.requiresAuth && !auth.user) return '/register'
   if (to.meta.requiresAdmin && !auth.isAdmin) return '/'
 
-  // If logged in but not subscribed, block protected pages except subscribe/welcome
+  // If logged in but not subscribed or subscription expired, block protected pages
   const freeRoutes = ['/subscribe', '/welcome', '/login', '/register', '/forgot', '/reset', '/']
-  if (auth.user && !auth.profile?.subscription_active && !freeRoutes.includes(to.path)) {
-    return '/subscribe'
+  if (auth.user && !freeRoutes.includes(to.path)) {
+    const isActive  = auth.profile?.subscription_active === true
+    const expiresAt = auth.profile?.subscription_expires_at
+    const isExpired = expiresAt ? new Date(expiresAt) < new Date() : false
+
+    if (!isActive || isExpired) {
+      // Auto-deactivate if expired
+      if (isExpired && isActive) {
+        auth.profile.subscription_active = false
+      }
+      return '/subscribe'
+    }
   }
 })
 

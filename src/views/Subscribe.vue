@@ -102,6 +102,10 @@ const payMethod = ref('mtn')
 const role       = computed(() => auth.profile?.role || 'worker')
 const userCountry = computed(() => auth.profile?.country || 'RW')
 const planAmount  = computed(() => role.value === 'employer' ? getCountry(userCountry.value).monthlyFee : getCountry(userCountry.value).workerFee)
+const isExpired   = computed(() => {
+  const exp = auth.profile?.subscription_expires_at
+  return exp ? new Date(exp) < new Date() : false
+})
 
 const payMethods = [
   { id:'mtn',    icon:'📱', label:'MTN MoMo' },
@@ -116,48 +120,60 @@ onMounted(() => {
 
 async function pay() {
   paying.value = true; error.value = ''
-  const orderId = 'SUB-' + Date.now()
 
-  // Save payment record
-  await supabase.from('job_payments').insert({
-    employer_id:    auth.user.id,
-    employer_email: auth.user.email,
-    amount:         planAmount.value,
-    type:           'subscription',
-    pay_method:     payMethod.value,
-    pay_phone:      payPhone.value || null,
-    pay_ref:        orderId,
-    status:         'pending',
-  })
+  try {
+    const orderId = 'SUB-' + Date.now()
 
-  if (payMethod.value === 'mtn' || payMethod.value === 'airtel') {
-    // For mobile money — admin confirms manually, give access pending
-    await supabase.from('profiles').update({
-      subscription_active: true,
-      subscription_expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-    }).eq('id', auth.user.id)
-    auth.profile.subscription_active = true
+    // Save payment record — ignore errors so they don't block payment
+    await supabase.from('job_payments').insert({
+      employer_id:    auth.user.id,
+      employer_email: auth.user.email,
+      amount:         planAmount.value,
+      pay_method:     payMethod.value,
+      pay_phone:      payPhone.value || null,
+      pay_ref:        orderId,
+      status:         'pending',
+    }).then(() => {}).catch(() => {})
+
+    if (payMethod.value === 'mtn' || payMethod.value === 'airtel') {
+      // Mobile money — admin confirms manually, give provisional access
+      // If renewing, extend from today; if first time, start from now
+      const newExpiry = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+      await supabase.from('profiles').update({
+        subscription_active: true,
+        subscription_expires_at: newExpiry
+      }).eq('id', auth.user.id)
+      if (auth.profile) {
+        auth.profile.subscription_active = true
+        auth.profile.subscription_expires_at = newExpiry
+      }
+      paying.value = false
+      router.push('/dashboard')
+      return
+    }
+
+    // PesaPal card payment
+    const nameParts = (auth.profile?.full_name || 'User').split(' ')
+    const result = await initiatePesapalPayment({
+      amount:      planAmount.value,
+      description: `TalentHub ${role.value} subscription`,
+      email:       auth.user.email,
+      phone:       payPhone.value || '',
+      firstName:   nameParts[0] || 'User',
+      lastName:    nameParts[1] || '',
+    })
+
     paying.value = false
-    router.push('/dashboard')
-    return
-  }
+    if (result.success && result.redirectUrl) {
+      window.location.href = result.redirectUrl
+    } else {
+      error.value = result.error || 'Card payment failed. Please try MTN or Airtel instead.'
+    }
 
-  // PesaPal card payment
-  const nameParts = (auth.profile?.full_name || 'User').split(' ')
-  const result = await initiatePesapalPayment({
-    amount:      planAmount.value,
-    description: `TalentHub ${role.value} subscription`,
-    email:       auth.user.email,
-    phone:       payPhone.value || '',
-    firstName:   nameParts[0] || 'User',
-    lastName:    nameParts[1] || '',
-  })
-
-  paying.value = false
-  if (result.success) {
-    window.location.href = result.redirectUrl
-  } else {
-    error.value = result.error || 'Payment failed. Please try again.'
+  } catch (err) {
+    paying.value = false
+    error.value = 'Something went wrong. Please try again.'
+    console.error('Pay error:', err)
   }
 }
 
