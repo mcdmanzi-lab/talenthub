@@ -124,16 +124,16 @@ const conversations = computed(() => {
 const unread = computed(() => conversations.value.reduce((sum, c) => sum + c.unread_count, 0))
 
 onMounted(async () => {
-  if (auth.user) await loadAll()
+  if (auth.user?.id) await loadAll()
 })
 
 onActivated(async () => {
-  if (auth.user) await loadAll()
+  if (auth.user?.id) await loadAll()
 })
 
-watch(() => auth.user, async (user) => {
-  if (user) await loadAll()
-})
+watch(() => auth.user?.id, async (id) => {
+  if (id) await loadAll()
+}, { immediate: true })
 
 async function loadAll() {
   loading.value = true

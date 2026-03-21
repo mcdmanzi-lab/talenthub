@@ -153,7 +153,8 @@ async function submit() {
   if (err) { error.value = err.message; loading.value = false; return }
 
   if (data.user) {
-    await supabase.from('profiles').insert({
+    // Use upsert to handle cases where trigger already created the profile
+    const { error: profileErr } = await supabase.from('profiles').upsert({
       id:              data.user.id,
       full_name:       form.fullName,
       email:           form.email,
@@ -163,8 +164,14 @@ async function submit() {
       worker_category: form.worker_category || null,
       skills:          form.skills.length ? form.skills : null,
       bio:             form.bio || null,
-    })
-    await supabase.from('job_alerts').insert({ user_id: data.user.id, email: form.email, active: true })
+    }, { onConflict: 'id' })
+    if (profileErr) console.warn('Profile upsert:', profileErr.message)
+
+    // job_alerts — ignore if already exists
+    await supabase.from('job_alerts').upsert(
+      { user_id: data.user.id, email: form.email, active: true },
+      { onConflict: 'user_id' }
+    )
   }
 
   loading.value = false

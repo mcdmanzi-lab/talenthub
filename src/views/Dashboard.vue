@@ -301,8 +301,8 @@ async function init() {
 onMounted(init)
 onActivated(init)
 
-// Also reload if auth becomes available after mount
-watch(() => auth.user, (user) => { if (user) init() })
+// Reload when auth user becomes available
+watch(() => auth.user?.id, (id) => { if (id) init() }, { immediate: false })
 
 async function load() {
   const jobIds = []
