@@ -17,6 +17,10 @@ import Messages       from '@/views/Messages.vue'
 import PaymentCallback from '@/views/PaymentCallback.vue'
 import Workers        from '@/views/Workers.vue'
 import Subscribe      from '@/views/Subscribe.vue'
+import CVBuilder      from '@/views/CVBuilder.vue'
+import AIMatch        from '@/views/AIMatch.vue'
+import Blog           from '@/views/Blog.vue'
+import BlogPost       from '@/views/BlogPost.vue'
 
 const routes = [
   { path: '/',                 component: Landing },
@@ -25,6 +29,10 @@ const routes = [
   { path: '/register',         component: Register },
   { path: '/welcome',          component: Welcome },
   { path: '/subscribe',        component: Subscribe, meta: { requiresAuth: true } },
+  { path: '/cv-builder',        component: CVBuilder, meta: { requiresAuth: true } },
+  { path: '/ai-match',          component: AIMatch,   meta: { requiresAuth: true } },
+  { path: '/blog',              component: Blog },
+  { path: '/blog/:slug',        component: BlogPost },
   { path: '/forgot',           component: Forgot },
   { path: '/reset',            component: Reset },
   { path: '/profile/:id',      component: Profile },

@@ -33,6 +33,12 @@
         <RouterLink to="/messages" class="dash-nav-item">
           <span>✉️</span><span>Messages</span>
         </RouterLink>
+        <RouterLink v-if="!auth.isEmployer" to="/cv-builder" class="dash-nav-item">
+          <span>📄</span><span>CV Builder</span>
+        </RouterLink>
+        <RouterLink to="/ai-match" class="dash-nav-item">
+          <span>🤖</span><span>AI Match</span>
+        </RouterLink>
         <RouterLink to="/jobs" class="dash-nav-item">
           <span>🔍</span><span>Browse Jobs</span>
         </RouterLink>
@@ -86,6 +92,20 @@
 
         <!-- Worker: recent applications + saved jobs -->
         <template v-else>
+          <div class="dash-section" v-if="!auth.profile?.featured_worker">
+            <div class="alert alert-info" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0">
+              <div>
+                <p style="font-size:13px;font-weight:600">⭐ Feature your profile</p>
+                <small>Get noticed by more employers — appear at the top of worker search.</small>
+              </div>
+              <button class="btn btn-yellow btn-sm" @click="showFeaturedWorker=true">Feature Me</button>
+            </div>
+          </div>
+          <div class="dash-section" v-else>
+            <div class="alert alert-success" style="margin-bottom:0">
+              ⭐ Your profile is featured until {{ new Date(auth.profile.featured_worker_until).toLocaleDateString() }}
+            </div>
+          </div>
           <div class="dash-section">
             <div class="section-hd">
               <h2>Recent Applications</h2>
@@ -235,6 +255,7 @@
     </main>
 
     <!-- Featured Modal -->
+    <FeaturedWorkerModal :show="showFeaturedWorker" @close="showFeaturedWorker=false" @featured="init" />
     <FeaturedModal :show="showFeatured" @close="showFeatured=false" />
   </div>
 </template>
@@ -247,6 +268,7 @@ import { auth } from '@/stores/auth'
 import { toast } from '@/stores/toast'
 import Analytics from '@/components/Analytics.vue'
 import FeaturedModal from '@/components/FeaturedModal.vue'
+import FeaturedWorkerModal from '@/components/FeaturedWorkerModal.vue'
 
 const router   = useRouter()
 const loading  = ref(true)
@@ -256,6 +278,7 @@ const receivedApps = ref([])
 const savedJobs    = ref([])
 const alertsEnabled= ref(false)
 const showFeatured = ref(false)
+const showFeaturedWorker = ref(false)
 const activeTab    = ref('overview')
 
 const tabs = computed(() => auth.isEmployer

@@ -55,8 +55,9 @@
             v-for="w in filtered"
             :key="w.id"
             :to="'/profile/' + w.id"
-            class="worker-card">
+            class="worker-card" :class="{ 'worker-card-featured': w.featured_worker }">
 
+            <span v-if="w.featured_worker" class="featured-crown">⭐ Featured</span>
             <div class="wc-top">
               <div class="wc-avatar">{{ initials(w.full_name) }}</div>
               <div class="wc-badges">
@@ -147,7 +148,7 @@ onMounted(async () => {
   const q = supabase.from('profiles').select('*').eq('role', 'worker').order('created_at', { ascending: false })
   if (country) q.eq('country', country)
   const { data } = await q
-  allWorkers.value = data || []
+  allWorkers.value = (data || []).sort((a,b) => (b.featured_worker ? 1 : 0) - (a.featured_worker ? 1 : 0))
   applyFilter()
   loading.value = false
 })

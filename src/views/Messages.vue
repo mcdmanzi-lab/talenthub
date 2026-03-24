@@ -94,6 +94,7 @@ import { supabase } from '@/supabase'
 import { auth } from '@/stores/auth'
 import { toast } from '@/stores/toast'
 import { sendEmail } from '@/utils/email'
+import { sendWhatsApp, WA_MESSAGES } from '@/utils/whatsapp'
 import { sanitizeReply } from '@/utils/validate'
 
 const loading        = ref(true)
@@ -193,6 +194,14 @@ async function sendReply() {
   if (data) {
     allMessages.value.push(data)
     activeMessages.value.push(data)
+  }
+
+  // WhatsApp notification
+  if (activeConv.value.other_phone) {
+    await sendWhatsApp({
+      phone:   activeConv.value.other_phone,
+      message: WA_MESSAGES.newMessage(auth.profile?.full_name || 'Someone'),
+    })
   }
 
   await sendEmail({

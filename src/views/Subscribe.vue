@@ -50,7 +50,22 @@
       </div>
 
       <!-- Payment method -->
+      <!-- Discount Code -->
       <div class="form-group" style="margin-top:20px">
+        <label class="label">Discount Code (optional)</label>
+        <div style="display:flex;gap:8px">
+          <input class="input" v-model="discountCode" placeholder="Enter code e.g. WELCOME50" style="text-transform:uppercase" />
+          <button class="btn btn-ghost" @click="applyCode" :disabled="applyingCode" style="white-space:nowrap">
+            <span v-if="applyingCode" class="spinner"></span>
+            <span v-else>Apply</span>
+          </button>
+        </div>
+        <div v-if="codeMsg" :style="codeValid ? 'color:var(--green);font-size:12px;margin-top:6px' : 'color:var(--red);font-size:12px;margin-top:6px'">
+          {{ codeMsg }}
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-top:4px">
         <label class="label">Pay with</label>
         <div class="pay-methods">
           <button v-for="m in payMethods" :key="m.id"
@@ -102,6 +117,13 @@ const payMethod = ref('mtn')
 const role       = computed(() => auth.profile?.role || 'worker')
 const userCountry = computed(() => auth.profile?.country || 'RW')
 const planAmount  = computed(() => role.value === 'employer' ? getCountry(userCountry.value).monthlyFee : getCountry(userCountry.value).workerFee)
+const discountCode  = ref('')
+const applyingCode  = ref(false)
+const codeMsg       = ref('')
+const codeValid     = ref(false)
+const codeDiscount  = ref(0)  // percentage e.g. 50 = 50% off
+const appliedCode   = ref(null)
+
 const isExpired   = computed(() => {
   const exp = auth.profile?.subscription_expires_at
   return exp ? new Date(exp) < new Date() : false
@@ -117,6 +139,35 @@ onMounted(() => {
   // If already subscribed, redirect to dashboard
   if (auth.profile?.subscription_active) router.push('/dashboard')
 })
+
+async function applyCode() {
+  const code = discountCode.value.trim().toUpperCase()
+  if (!code) return
+  applyingCode.value = true; codeMsg.value = ''; codeValid.value = false
+
+  const { data } = await supabase.from('discount_codes')
+    .select('*')
+    .eq('code', code)
+    .eq('active', true)
+    .maybeSingle()
+
+  applyingCode.value = false
+
+  if (!data) {
+    codeMsg.value = 'Invalid or expired code.'; codeValid.value = false; return
+  }
+  if (data.max_uses && data.used_count >= data.max_uses) {
+    codeMsg.value = 'This code has reached its usage limit.'; codeValid.value = false; return
+  }
+  if (data.expires_at && new Date(data.expires_at) < new Date()) {
+    codeMsg.value = 'This code has expired.'; codeValid.value = false; return
+  }
+
+  codeDiscount.value = data.discount_percent
+  appliedCode.value  = data
+  codeValid.value    = true
+  codeMsg.value      = `✓ Code applied! ${data.discount_percent}% off`
+}
 
 async function pay() {
   paying.value = true; error.value = ''
@@ -141,11 +192,17 @@ async function pay() {
       const newExpiry = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
       await supabase.from('profiles').update({
         subscription_active: true,
-        subscription_expires_at: newExpiry
+        subscription_expires_at: newExpiry,
+
       }).eq('id', auth.user.id)
       if (auth.profile) {
         auth.profile.subscription_active = true
         auth.profile.subscription_expires_at = newExpiry
+        auth.profile.has_referral_discount = false
+      }
+      // Track code usage
+      if (appliedCode.value) {
+        await supabase.from('discount_codes').update({ used_count: (appliedCode.value.used_count || 0) + 1 }).eq('id', appliedCode.value.id)
       }
       paying.value = false
       router.push('/dashboard')

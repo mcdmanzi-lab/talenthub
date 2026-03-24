@@ -111,6 +111,8 @@ import { supabase } from '@/supabase'
 import { auth } from '@/stores/auth'
 import { toast } from '@/stores/toast'
 import { sendEmail } from '@/utils/email'
+const aiWriting = ref(false)
+import { sendWhatsApp, WA_MESSAGES } from '@/utils/whatsapp'
 import { initiatePesapalPayment } from '@/utils/pesapal'
 
 const props = defineProps({ show: Boolean, job: Object })
@@ -223,6 +225,14 @@ async function submit() {
   }
 
   // Add notification for employer
+  // WhatsApp notification to employer
+  if (props.job?.employer_whatsapp) {
+    await sendWhatsApp({
+      phone:   props.job.employer_whatsapp,
+      message: WA_MESSAGES.newApplication(props.job.title, auth.profile?.full_name || 'Someone'),
+    })
+  }
+
   await supabase.from('notifications').insert({
     user_id: props.job?.employer_id,
     type:    'new_application',

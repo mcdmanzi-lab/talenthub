@@ -100,6 +100,10 @@
               <label class="label">Phone</label>
               <input class="input" v-model="editForm.phone" />
             </div>
+            <div class="form-group">
+              <label class="label">WhatsApp Number <span style="color:var(--text-ghost);font-weight:400">(for notifications)</span></label>
+              <input class="input" v-model="editForm.whatsapp" placeholder="e.g. 0781234567" />
+            </div>
             <div class="form-group" style="grid-column:1/-1">
               <label class="label">Website / LinkedIn / GitHub</label>
               <input class="input" v-model="editForm.website" placeholder="https://..." />
@@ -112,6 +116,13 @@
                   <option value="">Select category…</option>
                   <option v-for="cat in workerCategories" :key="cat.name" :value="cat.name">{{ cat.icon }} {{ cat.name }}</option>
                 </select>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+                <label class="label" style="margin-bottom:0">Bio</label>
+                <button type="button" class="btn btn-ghost btn-sm" @click="aiWriteBio" :disabled="aiWriting">
+                  <span v-if="aiWriting" class="spinner"></span>
+                  <span>{{ aiWriting ? 'Writing…' : '🤖 AI Write' }}</span>
+                </button>
               </div>
               <textarea class="input" v-model="editForm.bio" rows="4"
                 placeholder="Tell employers about yourself…"></textarea>
@@ -140,8 +151,13 @@
 
         <!-- Bio -->
         <div class="profile-card" v-if="profile.bio || isOwn">
-          <div class="pc-title">About</div>
-          <p v-if="profile.bio" class="bio-text">{{ profile.bio }}</p>
+          <div class="pc-title-row">
+            <div class="pc-title">About</div>
+            <button v-if="profile.bio && currentLang !== 'en'" class="btn btn-ghost btn-sm" @click="translateBio">
+              {{ translatingBio ? '...' : translatedBio ? '✕ Original' : '🌐 Translate' }}
+            </button>
+          </div>
+          <p v-if="profile.bio" class="bio-text">{{ translatedBio || profile.bio }}</p>
           <p v-else class="empty-field" @click="editMode=true">+ Add a bio</p>
         </div>
 
@@ -193,6 +209,35 @@
       </main>
     </div>
 
+    <!-- Ratings Section -->
+    <div class="profile-card" v-if="profile.role === 'worker'">
+      <div class="pc-title-row">
+        <div class="pc-title">
+          Ratings
+          <span v-if="profile.rating_count > 0" style="font-size:13px;color:var(--text-dim);font-weight:400;margin-left:8px">
+            ⭐ {{ profile.avg_rating }}/5 ({{ profile.rating_count }} review{{ profile.rating_count !== 1 ? 's' : '' }})
+          </span>
+        </div>
+        <button v-if="auth.isEmployer && !isOwn && !myRating" class="btn btn-ghost btn-sm" @click="showRating=true">+ Rate</button>
+      </div>
+
+      <div v-if="!ratings.length" class="empty" style="padding:24px 0">
+        <p>No ratings yet.</p>
+      </div>
+      <div v-else class="ratings-list">
+        <div v-for="r in ratings" :key="r.id" class="rating-item">
+          <div class="rating-header">
+            <div class="rating-stars">
+              <span v-for="n in 5" :key="n" :style="n <= r.rating ? 'color:#facc15' : 'color:#374151'">★</span>
+            </div>
+            <div class="rating-meta">{{ timeAgo(r.created_at) }}</div>
+          </div>
+          <p v-if="r.comment" class="rating-comment">{{ r.comment }}</p>
+          <button v-if="r.employer_id === auth.user?.id" class="btn btn-danger btn-sm" style="margin-top:8px" @click="deleteRating(r.id)">Delete</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Add Portfolio Modal -->
     <Teleport to="body">
       <div v-if="showAddPortfolio" class="modal-backdrop" @click.self="showAddPortfolio=false">
@@ -233,6 +278,34 @@
       </div>
     </Teleport>
 
+    <!-- Rating Modal -->
+    <Teleport to="body">
+      <div v-if="showRating" class="modal-backdrop" @click.self="showRating=false">
+        <div class="modal">
+          <div class="modal-header">
+            <div class="modal-title">Rate {{ profile.full_name }}</div>
+            <button class="modal-close" @click="showRating=false">✕</button>
+          </div>
+          <div class="form-group">
+            <label class="label">Rating</label>
+            <div style="display:flex;gap:8px;font-size:28px;margin-bottom:8px">
+              <span v-for="n in 5" :key="n"
+                :style="n <= ratingForm.rating ? 'color:#facc15;cursor:pointer' : 'color:#374151;cursor:pointer'"
+                @click="ratingForm.rating = n">★</span>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="label">Comment (optional)</label>
+            <textarea class="input" v-model="ratingForm.comment" rows="3" placeholder="Share your experience working with this person…"></textarea>
+          </div>
+          <button class="btn btn-primary btn-full" style="margin-top:8px" @click="submitRating" :disabled="!ratingForm.rating || ratingSaving">
+            <span v-if="ratingSaving" class="spinner"></span>
+            <span>{{ ratingSaving ? 'Saving…' : 'Submit Rating' }}</span>
+          </button>
+        </div>
+      </div>
+    </Teleport>
+
     <!-- Message Modal -->
     <Teleport to="body">
       <div v-if="showMsg" class="modal-backdrop" @click.self="showMsg=false">
@@ -264,6 +337,7 @@ import { auth } from '@/stores/auth'
 import { toast } from '@/stores/toast'
 import { sendEmail } from '@/utils/email'
 import { sanitizeProfileForm } from '@/utils/validate'
+import { translateText } from '@/utils/translate'
 
 const route = useRoute()
 const profileId = computed(() => route.params.id || auth.user?.id)
@@ -280,7 +354,7 @@ const showAddExp       = ref(false)
 const showMsg          = ref(false)
 const msgSending       = ref(false)
 
-const editForm = reactive({
+const editForm = reactive({ whatsapp: profile.whatsapp || '',
   worker_category: '', full_name:'', title:'', location:'', phone:'', website:'', bio:'', skills:[] })
 const newPortfolio = reactive({ title:'', description:'', url:'' })
 const newExp       = reactive({ role:'', company:'', start_year:'', end_year:'', description:'' })
@@ -319,6 +393,81 @@ async function loadPortfolio() {
 async function loadExperience() {
   const { data } = await supabase.from('experience').select('*').eq('user_id', profileId.value).order('start_year', { ascending: false })
   experience.value = data || []
+  await loadRatings()
+}
+
+// ── Ratings ──────────────────────────────────────────────────
+const ratings     = ref([])
+const myRating    = ref(null)
+const showRating  = ref(false)
+const ratingSaving= ref(false)
+const aiWriting    = ref(false)
+const translatedBio = ref('')
+const translatingBio = ref(false)
+const currentLang   = ref(localStorage.getItem('talenthub_lang') || 'en')
+const ratingForm  = reactive({ rating: 0, comment: '' })
+
+async function loadRatings() {
+  const { data } = await supabase.from('worker_ratings').select('*')
+    .eq('worker_id', profileId.value).order('created_at', { ascending: false })
+  ratings.value = data || []
+  myRating.value = data?.find(r => r.employer_id === auth.user?.id) || null
+}
+
+async function submitRating() {
+  if (!ratingForm.rating) return
+  ratingSaving.value = true
+  await supabase.from('worker_ratings').upsert({
+    worker_id:   profileId.value,
+    employer_id: auth.user.id,
+    rating:      ratingForm.rating,
+    comment:     ratingForm.comment || null,
+  }, { onConflict: 'worker_id,employer_id' })
+  await loadRatings()
+  // Refresh profile to get new avg
+  const { data } = await supabase.from('profiles').select('avg_rating,rating_count').eq('id', profileId.value).single()
+  if (data) { profile.avg_rating = data.avg_rating; profile.rating_count = data.rating_count }
+  ratingSaving.value = false
+  showRating.value = false
+  toast.success('Rating submitted!')
+}
+
+async function deleteRating(id) {
+  await supabase.from('worker_ratings').delete().eq('id', id)
+  await loadRatings()
+  toast.success('Rating deleted.')
+}
+
+async function translateBio() {
+  if (translatedBio.value) { translatedBio.value = ''; return }
+  if (!profile.bio) return
+  translatingBio.value = true
+  translatedBio.value = await translateText(profile.bio, currentLang.value)
+  translatingBio.value = false
+}
+
+async function aiWriteBio() {
+  aiWriting.value = true
+  try {
+    const res = await fetch('/api/ai-write', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'profile_bio',
+        data: {
+          name:     editForm.full_name || auth.profile?.full_name,
+          title:    editForm.title,
+          skills:   editForm.skills,
+          category: editForm.worker_category,
+          location: editForm.location,
+        }
+      })
+    })
+    const data = await res.json()
+    if (data.text) { editForm.bio = data.text; toast.success('AI wrote your bio!') }
+    else { toast.error('AI writing failed.') }
+  } catch { toast.error('AI writing failed.') }
+  aiWriting.value = false
 }
 
 async function uploadPhoto(e) {
@@ -347,6 +496,7 @@ async function saveProfile() {
     phone:     cleaned.phone,
     website:   cleaned.website,
     bio:       cleaned.bio,
+    whatsapp:  editForm.whatsapp || null,
     skills:    cleaned.skills
   }).eq('id', auth.user.id)
   saving.value = false
