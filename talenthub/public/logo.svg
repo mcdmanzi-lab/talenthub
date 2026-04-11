@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 60" width="220" height="60">
+  <defs>
+    <linearGradient id="starGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#2563eb;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#60a5fa;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1d4ed8;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#2563eb;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Logo mark background -->
+  <rect x="0" y="8" width="44" height="44" rx="10" fill="url(#bgGrad)" />
+
+  <!-- Star shape -->
+  <polygon
+    points="22,14 25.5,20.5 33,21.5 27.5,26.5 29,34 22,30.5 15,34 16.5,26.5 11,21.5 18.5,20.5"
+    fill="white"
+    opacity="0.95"
+  />
+
+  <!-- Small dot accent -->
+  <circle cx="22" cy="42" r="2.5" fill="white" opacity="0.5" />
+
+  <!-- TalentHub text -->
+  <text x="54" y="28" font-family="Georgia, 'Times New Roman', serif" font-size="18" font-weight="700" fill="white" letter-spacing="-0.3">Talent</text>
+  <text x="54" y="28" font-family="Georgia, 'Times New Roman', serif" font-size="18" font-weight="700" fill="url(#starGrad)" letter-spacing="-0.3" dx="52">Hub</text>
+
+  <!-- Rwanda subtext -->
+  <text x="55" y="44" font-family="'Courier New', monospace" font-size="9" fill="#6b7280" letter-spacing="1.5">JOB-LINK</text>
+
+  <!-- Subtle star accent next to Rwanda -->
+  <polygon
+    points="178,38 179,40.5 181.5,40.5 179.5,42 180.5,44.5 178,43 175.5,44.5 176.5,42 174.5,40.5 177,40.5"
+    fill="#2563eb"
+    opacity="0.7"
+  />
+</svg>
